@@ -506,14 +506,16 @@ chk_neg:
 
 	Check_Security(SYM_BROWSE, POL_EXEC, arg);
 
-	if (!IS_NONE(arg))
-		url = Val_Str_To_OS(arg);
+	if (IS_NONE(arg))
+		return R_UNSET;
+
+	url = Val_Str_To_OS(arg);
 
 	r = OS_BROWSE(url, 0);
 
 	if (r == 0) Trap1(RE_CALL_FAIL, Make_OS_Error());
 
-	return R_NONE;
+	return R_UNSET;
 }
 
 
@@ -599,7 +601,6 @@ chk_neg:
 	}
 
 	blk = Make_Block(len*2);
-	SAVE_SERIES(blk);
 
 	str = start;
 	while (NZ(eq = FIND_CHR(str+1, '=')) && NZ(n = LEN_STR(str))) {
@@ -610,7 +611,6 @@ chk_neg:
 
 	Block_As_Map(blk);
 
-	UNSAVE_SERIES(blk);
 	return blk;
 }
 
@@ -661,7 +661,6 @@ chk_neg:
 	}
 
 	blk = Make_Block(len);
-	SAVE_SERIES(blk);
 
 	// First is a dir path or full file path:
 	str = start;
@@ -683,7 +682,6 @@ chk_neg:
 		}
 	}
 
-	UNSAVE_SERIES(blk);
 	return blk;
 }
 #endif

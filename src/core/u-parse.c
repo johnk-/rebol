@@ -46,7 +46,7 @@ typedef struct reb_parse {
 } REBPARSE;
 
 enum parse_flags {
-	PF_SET,
+	PF_SET_OR_COPY, // test PF_COPY first; if false, this means PF_SET 
 	PF_COPY,
 	PF_NOT,
 	PF_NOT2,
@@ -421,6 +421,20 @@ no_result:
 					if (!HAS_CASE(parse)) ch2 = UP_CASE(ch2);
 					if (ch1 == ch2) goto found1;
 				}
+				else if (IS_TAG(item)) {
+					ch2 = '<';
+					if (ch1 == ch2) {
+						// adapted from function Parse_To :-)
+						REBSER *ser;
+						ser = Copy_Form_Value(item, 0);
+						i = Find_Str_Str(series, 0, index, series->tail, 1, ser, 0, ser->tail,  AM_FIND_MATCH | parse->flags);
+						if (i != NOT_FOUND) {
+							if (is_thru) i += ser->tail;
+							index = i;
+							goto found;
+						}
+					}
+				}
 				else if (ANY_STR(item)) {
 					ch2 = VAL_ANY_CHAR(item);
 					if (!HAS_CASE(parse)) ch2 = UP_CASE(ch2);
@@ -525,6 +539,11 @@ bad_target:
 			// #"A"
 			else if (IS_CHAR(item)) {
 				i = Find_Str_Char(series, 0, index, series->tail, 1, VAL_CHAR(item), HAS_CASE(parse));
+				if (i != NOT_FOUND && is_thru) i++;
+			}
+			// bitset
+			else if (IS_BITSET(item)) {
+				i = Find_Str_Bitset(series, 0, index, series->tail, 1, VAL_BITSET(item), HAS_CASE(parse));
 				if (i != NOT_FOUND && is_thru) i++;
 			}
 		}
@@ -707,9 +726,9 @@ bad_target:
 					case SYM_COPY:
 						SET_FLAG(flags, PF_COPY);
 					case SYM_SET:
-						SET_FLAG(flags, PF_SET);
+						SET_FLAG(flags, PF_SET_OR_COPY);
 						item = rules++;
-						if (!IS_WORD(item)) Trap1(RE_PARSE_VARIABLE, item);
+						if (!(IS_WORD(item) || IS_SET_WORD(item))) Trap1(RE_PARSE_VARIABLE, item);
 						if (VAL_CMD(item)) Trap1(RE_PARSE_COMMAND, item);
 						word = item;
 						continue;
@@ -788,9 +807,12 @@ bad_target:
 				// Any other cmd must be a match command, so proceed...
 
 			} else { // It's not a PARSE command, get or set it:
-
-				// word: - set a variable to the series at current index
-				if (IS_SET_WORD(item)) {
+			
+				// word: - if not the target of a COPY or SET operation, this will
+				// default to setting a variable to the series at current index
+				if (IS_SET_WORD(item) &&
+					!(GET_FLAG(flags, PF_SET_OR_COPY) || GET_FLAG(flags, PF_COPY)))
+				{
 					Set_Var_Series(item, parse->type, series, index);
 					continue;
 				}
@@ -991,7 +1013,7 @@ post:
 						: Copy_String(series, begin, count); // condenses
 					Set_Var_Series(word, parse->type, ser, 0);
 				}
-				else if (GET_FLAG(flags, PF_SET)) {
+				else if (GET_FLAG(flags, PF_SET_OR_COPY)) {
 					if (IS_BLOCK_INPUT(parse)) {
 						item = Get_Var_Safe(word);
 						if (count == 0) SET_NONE(item);

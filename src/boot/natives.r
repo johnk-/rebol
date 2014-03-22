@@ -131,10 +131,11 @@ do: native [
 ;]
 
 either: native [
-	{If condition is TRUE, evaluates the first block, else evaluates the second.}
+	{If TRUE condition return first arg, else second; evaluate blocks by default.}
 	condition
-	true-block [block!]
-	false-block [block!]
+	true-branch
+	false-branch
+	/only "Suppress evaluation of block args."
 ]
 
 exit: native [
@@ -186,11 +187,10 @@ halt: native [
 ]
 
 if: native [
-	{If condition is TRUE, evaluates the block.}
+	{If TRUE condition, return arg; evaluate blocks by default.}
 	condition
-	then-block [block!]
-	/else "If not true, evaluate this block"
-	else-block [block!]
+	true-branch
+	/only "Return block arg instead of evaluating it."
 ]
 
 loop: native [
@@ -272,7 +272,6 @@ remove-each: native [
 return: native [
 	{Returns a value from a function.}
 	value [any-type!]
-	/redo {Upon return, re-evaluate the returned result. (Used for DO)}
 ]
 
 switch: native [
@@ -306,9 +305,10 @@ try: native [
 ]
 
 unless: native [
-	{Evaluates the block if condition is not TRUE.}
+	{If FALSE condition, return arg; evaluate blocks by default.}
 	condition
-	block [block!]
+	false-branch
+	/only "Return block arg instead of evaluating it."
 ]
 
 until: native [
